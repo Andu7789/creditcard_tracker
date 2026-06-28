@@ -389,7 +389,9 @@ function getBillTotals() {
   }, 0);
   const yourBills = totalBills - rachelTotal;
   const cardPayments = state.cards.reduce((sum, card) => sum + Number(card.payment || 0), 0);
-  const monthlyIncome = Number(state.budget?.monthlyIncome || 0);
+  // Monthly income reported to the app should include the user's entered income
+  // plus Rachel's contribution so the 'Could pay extra' box reflects combined funds.
+  const monthlyIncome = Number(state.budget?.monthlyIncome || 0) + rachelTotal;
   const possibleExtra = monthlyIncome ? monthlyIncome - yourBills - cardPayments : 0;
 
   return {
