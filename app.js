@@ -164,21 +164,28 @@ async function initStorage() {
 
     if (data?.data) {
       state = normaliseState(data.data);
-      // If there are no bills in the saved JSON state, try importing from the
-      // dedicated `bills` table so seeded rows appear in the UI.
-      if ((!Array.isArray(state.bills) || state.bills.length === 0) && supabaseClient) {
+      // Merge rows from the dedicated `bills` table into the JSON state
+      // without overwriting any bills the user already added manually.
+      if (supabaseClient) {
         try {
           const { data: billsData, error: billsError } = await supabaseClient.from('bills').select('*');
           if (!billsError && Array.isArray(billsData) && billsData.length) {
-            state.bills = billsData.map((b) => ({
-              id: b.id || makeId(),
-              name: b.notes || b.name || "",
-              amount: Number(b.amount) || 0,
-              splitWithRachel: false,
-              dueDate: b.due_date || null,
-            }));
-            // Persist merged state back to the single-state table so UI stays in sync
-            await saveToSupabase();
+            const existingIds = new Set((state.bills || []).map((b) => String(b.id)));
+            const imported = billsData
+              .filter((b) => !existingIds.has(String(b.id)))
+              .map((b) => ({
+                id: b.id || makeId(),
+                name: b.notes || b.name || "",
+                amount: Number(b.amount) || 0,
+                splitWithRachel: false,
+                dueDate: b.due_date || null,
+              }));
+
+            if (imported.length) {
+              state.bills = Array.isArray(state.bills) ? state.bills.concat(imported) : imported;
+              // Persist merged state back to the single-state table so UI stays in sync
+              await saveToSupabase();
+            }
           }
         } catch (err) {
           console.warn("Failed to import bills from bills table:", err);
