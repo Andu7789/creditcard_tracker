@@ -3,6 +3,7 @@ const SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4m_fZwCfwVTBD5eAJhl1LQ_D63Pe2U_";
 const SUPABASE_TABLE = "credit_card_tracker_state";
 const SUPABASE_ROW_ID = "default";
+const SUPABASE_OAUTH_REDIRECT = "https://andu7789.github.io/creditcard_tracker/";
 const currency = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 const money = (value) => currency.format(Number.isFinite(value) ? value : 0);
 const ALLOWED_EMAIL = "andrew.britain@gmail.com";
@@ -853,6 +854,17 @@ function setDebugStatus(message) {
   if (debug) debug.textContent = `Debug: ${message}`;
 }
 
+async function handleSupabaseOAuthCallback() {
+  if (!window.location.hash) return;
+  const hash = window.location.hash.toLowerCase();
+  if (!hash.includes("access_token") && !hash.includes("id_token") && !hash.includes("error")) return;
+
+  if (supabaseClient?.auth?.getSessionFromUrl) {
+    await supabaseClient.auth.getSessionFromUrl({ storeSession: true });
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   setDebugStatus("DOM loaded, checking Supabase...");
   if (!window.supabase) {
@@ -865,19 +877,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   // initialising storage. This mirrors the client creation in initStorage.
   if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  await handleSupabaseOAuthCallback();
+
   // Require Google sign-in via Supabase. If the user is not signed in we'll
   // redirect to the Google OAuth flow. If signed in but with the wrong
   // account, sign them out and block access.
   if (supabaseClient) {
     try {
+      const urlHash = window.location.hash;
+      if (urlHash && (urlHash.includes("access_token") || urlHash.includes("id_token") || urlHash.includes("refresh_token") || urlHash.includes("error"))) {
+        await supabaseClient.auth.onAuthStateChange(() => {});
+      }
+
       const { data: sessionData } = await supabaseClient.auth.getSession();
       const user = sessionData?.session?.user;
       if (!user) {
-        const redirectTo = window.location.origin + window.location.pathname;
         await supabaseClient.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo,
+            redirectTo: SUPABASE_OAUTH_REDIRECT,
           },
         });
         return; // redirecting to Google
