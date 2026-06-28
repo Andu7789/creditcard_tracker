@@ -849,9 +849,13 @@ function escapeHtml(value) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  if (!window.supabase) {
+    alert("Supabase auth library failed to load. Check network/deploy settings.");
+    return;
+  }
   // Create supabase client early so we can require authentication before
   // initialising storage. This mirrors the client creation in initStorage.
-  if (window.supabase && !supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Require Google sign-in via Supabase. If the user is not signed in we'll
   // redirect to the Google OAuth flow. If signed in but with the wrong
