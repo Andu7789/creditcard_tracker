@@ -850,7 +850,15 @@ function escapeHtml(value) {
 
 function setDebugStatus(message) {
   const debug = document.querySelector("#debugStatus");
-  if (debug) debug.textContent = `Debug: ${message}`;
+  if (debug) {
+    debug.textContent = `Debug: ${message}`;
+    debug.style.display = "block";
+  }
+}
+
+function hideDebugStatus() {
+  const debug = document.querySelector("#debugStatus");
+  if (debug) debug.style.display = "none";
 }
 
 function showLoginOverlay() {
@@ -874,7 +882,7 @@ function attemptLogin() {
   const value = String(input.value || "").trim();
   if (value === ACCESS_CODE) {
     hideLoginOverlay();
-    setDebugStatus("Access granted. Initialising app...");
+    hideDebugStatus();
     initStorage().finally(() => {
       render();
     });
