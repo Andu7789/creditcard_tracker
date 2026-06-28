@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credit Card Tracker</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">CC</div>
+        <div>
+          <strong>CardClear</strong>
+          <span>Credit payoff planner</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item is-active" href="#overview"><i data-lucide="layout-dashboard"></i><span>Overview</span></a>
+        <a class="nav-item" href="#cards"><i data-lucide="credit-card"></i><span>Cards</span></a>
+        <a class="nav-item" href="#what-if"><i data-lucide="wand-sparkles"></i><span>What if</span></a>
+        <a class="nav-item" href="#schedule"><i data-lucide="calendar-days"></i><span>Schedule</span></a>
+      </nav>
+
+      <div class="sidebar-note">
+        <i data-lucide="lock-keyhole"></i>
+        <p id="storageStatus">Connecting to Supabase storage...</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Debt dashboard</p>
+          <h1>Credit Card Tracker</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="importButton" type="button" title="Import data" aria-label="Import data"><i data-lucide="upload"></i></button>
+          <button class="icon-button" id="exportButton" type="button" title="Export data" aria-label="Export data"><i data-lucide="download"></i></button>
+          <button class="primary-button" id="addCardButton" type="button"><i data-lucide="plus"></i><span>Add card</span></button>
+        </div>
+      </header>
+
+      <section class="summary-grid" id="overview" aria-label="Account summary">
+        <article class="metric-card">
+          <span>Total balance</span>
+          <strong id="totalBalance">£0</strong>
+          <small id="utilisationSummary">0% total utilisation</small>
+        </article>
+        <article class="metric-card">
+          <span>Monthly payments</span>
+          <strong id="monthlyPayments">£0</strong>
+          <small id="minimumSummary">£0 minimum due</small>
+        </article>
+        <article class="metric-card">
+          <span>Payoff date</span>
+          <strong id="payoffDate">-</strong>
+          <small id="payoffMonths">No active balances</small>
+        </article>
+        <article class="metric-card">
+          <span>Interest forecast</span>
+          <strong id="interestForecast">£0</strong>
+          <small id="strategySummary">Avalanche strategy</small>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Balance forecast</h2>
+              <p>Compare your current plan with the what-if scenario.</p>
+            </div>
+            <div class="segmented-control" role="group" aria-label="Payoff strategy">
+              <button class="is-selected" data-strategy="avalanche" type="button">Avalanche</button>
+              <button data-strategy="snowball" type="button">Snowball</button>
+              <button data-strategy="highest-balance" type="button">Highest balance</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="balanceChart" aria-label="Projected credit card balance over time"></canvas>
+          </div>
+        </div>
+
+        <div class="panel insight-panel">
+          <div class="panel-header compact">
+            <h2>Payoff insight</h2>
+            <i data-lucide="sparkles"></i>
+          </div>
+          <div class="insight-list" id="insightList"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="what-if">
+        <div class="panel-header">
+          <div>
+            <h2>What-if planner</h2>
+            <p>Test extra monthly payments or a one-off payment before committing.</p>
+          </div>
+          <button class="ghost-button" id="resetScenarioButton" type="button"><i data-lucide="rotate-ccw"></i><span>Reset</span></button>
+        </div>
+
+        <div class="scenario-grid">
+          <label class="field">
+            <span>Extra every month</span>
+            <div class="input-with-prefix">
+              <span>£</span>
+              <input id="extraMonthlyInput" type="number" min="0" step="10" value="50">
+            </div>
+          </label>
+          <label class="field">
+            <span>One-off payment</span>
+            <div class="input-with-prefix">
+              <span>£</span>
+              <input id="oneOffInput" type="number" min="0" step="10" value="250">
+            </div>
+          </label>
+          <label class="field">
+            <span>Apply one-off in month</span>
+            <select id="oneOffMonthInput"></select>
+          </label>
+          <div class="scenario-result">
+            <span>Estimated improvement</span>
+            <strong id="scenarioSavings">£0 saved</strong>
+            <small id="scenarioTimeSaved">No change yet</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="cards">
+        <div class="panel-header">
+          <div>
+            <h2>Your cards</h2>
+            <p>Track balance, APR, credit limit, minimum and planned monthly payment.</p>
+          </div>
+        </div>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th><button class="sort-button" data-card-sort="name" type="button">Card <span></span></button></th>
+                <th><button class="sort-button" data-card-sort="balance" type="button">Balance <span></span></button></th>
+                <th><button class="sort-button" data-card-sort="apr" type="button">APR <span></span></button></th>
+                <th><button class="sort-button" data-card-sort="limit" type="button">Limit <span></span></button></th>
+                <th><button class="sort-button" data-card-sort="utilisation" type="button">% used <span></span></button></th>
+                <th><button class="sort-button" data-card-sort="minimum" type="button">Minimum <span></span></button></th>
+                <th><button class="sort-button" data-card-sort="payment" type="button">Monthly pay <span></span></button></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cardsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="schedule">
+        <div class="panel-header">
+          <div>
+            <h2>Remaining months</h2>
+            <p id="scheduleSummary">Full month-by-month forecast for payments, interest and remaining balance.</p>
+          </div>
+        </div>
+        <div class="schedule-grid" id="scheduleGrid"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="card-modal" id="cardModal">
+    <form method="dialog" id="cardForm">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add card</h2>
+        <button class="icon-button" id="closeModalButton" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <input id="cardId" type="hidden">
+      <div class="modal-grid">
+        <label class="field">
+          <span>Card name</span>
+          <input id="cardName" type="text" required placeholder="Everyday card">
+        </label>
+        <label class="field">
+          <span>Balance</span>
+          <div class="input-with-prefix">
+            <span>£</span>
+            <input id="cardBalance" type="number" min="0" step="0.01" required>
+          </div>
+        </label>
+        <label class="field">
+          <span>APR</span>
+          <div class="input-with-prefix suffix">
+            <input id="cardApr" type="number" min="0" step="0.01" required>
+            <span>%</span>
+          </div>
+        </label>
+        <label class="field">
+          <span>Credit limit</span>
+          <div class="input-with-prefix">
+            <span>£</span>
+            <input id="cardLimit" type="number" min="0" step="0.01" required>
+          </div>
+        </label>
+        <label class="field">
+          <span>Minimum payment</span>
+          <div class="input-with-prefix">
+            <span>£</span>
+            <input id="cardMinimum" type="number" min="0" step="0.01" required>
+          </div>
+        </label>
+        <label class="field">
+          <span>Monthly amount paying</span>
+          <div class="input-with-prefix">
+            <span>£</span>
+            <input id="cardPayment" type="number" min="0" step="0.01" required>
+          </div>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost-button" id="cancelModalButton" type="button">Cancel</button>
+        <button class="primary-button" id="saveCardButton" value="default" type="submit"><i data-lucide="check"></i><span>Save card</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <input id="importFile" type="file" accept="application/json" hidden>
+</body>
+</html>
