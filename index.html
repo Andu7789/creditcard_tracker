@@ -28,6 +28,7 @@
       <nav class="nav-list" aria-label="Main navigation">
         <a class="nav-item is-active" href="#overview"><i data-lucide="layout-dashboard"></i><span>Overview</span></a>
         <a class="nav-item" href="#cards"><i data-lucide="credit-card"></i><span>Cards</span></a>
+        <a class="nav-item" href="#bills"><i data-lucide="receipt-text"></i><span>Bills</span></a>
         <a class="nav-item" href="#what-if"><i data-lucide="wand-sparkles"></i><span>What if</span></a>
         <a class="nav-item" href="#schedule"><i data-lucide="calendar-days"></i><span>Schedule</span></a>
       </nav>
@@ -134,6 +135,76 @@
             <strong id="scenarioSavings">£0 saved</strong>
             <small id="scenarioTimeSaved">No change yet</small>
           </div>
+        </div>
+      </section>
+
+      <section class="panel" id="bills">
+        <div class="panel-header">
+          <div>
+            <h2>Bills &amp; outgoings</h2>
+            <p>Track monthly bills, split shared costs with Rachel, and see what may be available for extra card payments.</p>
+          </div>
+        </div>
+
+        <div class="bill-summary-grid">
+          <label class="field">
+            <span>Monthly income</span>
+            <div class="input-with-prefix">
+              <span>&pound;</span>
+              <input id="monthlyIncomeInput" type="number" min="0" step="50" placeholder="0">
+            </div>
+          </label>
+          <div class="scenario-result">
+            <span>Total bills</span>
+            <strong id="totalBills">£0</strong>
+            <small>Before Rachel splits</small>
+          </div>
+          <div class="scenario-result">
+            <span>Rachel monthly total</span>
+            <strong id="rachelTotal">£0</strong>
+            <small>Half of ticked shared bills</small>
+          </div>
+          <div class="scenario-result">
+            <span>Could pay extra</span>
+            <strong id="possibleExtra">£0</strong>
+            <small id="possibleExtraNote">Add income to calculate</small>
+          </div>
+        </div>
+
+        <form class="bill-form" id="billForm">
+          <input id="billId" type="hidden">
+          <label class="field">
+            <span>Bill name</span>
+            <input id="billName" type="text" placeholder="Rent" required>
+          </label>
+          <label class="field">
+            <span>Monthly amount</span>
+            <div class="input-with-prefix">
+              <span>&pound;</span>
+              <input id="billAmount" type="number" min="0" step="0.01" placeholder="1000" required>
+            </div>
+          </label>
+          <label class="check-field">
+            <input id="billSplit" type="checkbox">
+            <span>Rachel goes halves</span>
+          </label>
+          <button class="primary-button" id="saveBillButton" type="submit"><i data-lucide="plus"></i><span>Add bill</span></button>
+        </form>
+
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Bill</th>
+                <th>Monthly amount</th>
+                <th>Rachel halves</th>
+                <th>Rachel pays</th>
+                <th>Your share</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="billsTable"></tbody>
+          </table>
         </div>
       </section>
 

@@ -36,6 +36,8 @@ const defaultCards = [
   },
 ];
 
+const defaultBills = [];
+
 let state = loadLocalState();
 let balanceChart;
 let supabaseClient = null;
@@ -53,6 +55,7 @@ const els = {
   strategySummary: document.querySelector("#strategySummary"),
   cardsTable: document.querySelector("#cardsTable"),
   scheduleGrid: document.querySelector("#scheduleGrid"),
+  billsTable: document.querySelector("#billsTable"),
   insightList: document.querySelector("#insightList"),
   scheduleSummary: document.querySelector("#scheduleSummary"),
   cardModal: document.querySelector("#cardModal"),
@@ -65,6 +68,17 @@ const els = {
   cardLimit: document.querySelector("#cardLimit"),
   cardMinimum: document.querySelector("#cardMinimum"),
   cardPayment: document.querySelector("#cardPayment"),
+  monthlyIncomeInput: document.querySelector("#monthlyIncomeInput"),
+  totalBills: document.querySelector("#totalBills"),
+  rachelTotal: document.querySelector("#rachelTotal"),
+  possibleExtra: document.querySelector("#possibleExtra"),
+  possibleExtraNote: document.querySelector("#possibleExtraNote"),
+  billForm: document.querySelector("#billForm"),
+  billId: document.querySelector("#billId"),
+  billName: document.querySelector("#billName"),
+  billAmount: document.querySelector("#billAmount"),
+  billSplit: document.querySelector("#billSplit"),
+  saveBillButton: document.querySelector("#saveBillButton"),
   extraMonthlyInput: document.querySelector("#extraMonthlyInput"),
   oneOffInput: document.querySelector("#oneOffInput"),
   oneOffMonthInput: document.querySelector("#oneOffMonthInput"),
@@ -83,6 +97,8 @@ const els = {
 function defaultState() {
   return {
     cards: defaultCards,
+    bills: defaultBills,
+    budget: { monthlyIncome: 0 },
     strategy: "avalanche",
     scenario: { extraMonthly: 50, oneOff: 250, oneOffMonth: 2 },
     cardSort: { field: "balance", direction: "desc" },
@@ -92,6 +108,10 @@ function defaultState() {
 function normaliseState(value) {
   return {
     cards: Array.isArray(value?.cards) ? value.cards : defaultCards,
+    bills: Array.isArray(value?.bills) ? value.bills : defaultBills,
+    budget: {
+      monthlyIncome: Number(value?.budget?.monthlyIncome ?? 0),
+    },
     strategy: value?.strategy || "avalanche",
     scenario: {
       extraMonthly: Number(value?.scenario?.extraMonthly ?? 50),
@@ -307,6 +327,7 @@ function render() {
   saveState();
   syncControls();
   renderSummary();
+  renderBills();
   renderCards();
   renderInsights();
   renderSchedule();
@@ -320,12 +341,80 @@ function syncControls() {
   });
   els.extraMonthlyInput.value = state.scenario.extraMonthly;
   els.oneOffInput.value = state.scenario.oneOff;
+  els.monthlyIncomeInput.value = state.budget?.monthlyIncome || "";
 
   const current = Number(state.scenario.oneOffMonth || 1);
   els.oneOffMonthInput.innerHTML = Array.from({ length: 24 }, (_, index) => {
     const month = index + 1;
     return `<option value="${month}" ${month === current ? "selected" : ""}>Month ${month}</option>`;
   }).join("");
+}
+
+function getBillTotals() {
+  const totalBills = state.bills.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+  const rachelTotal = state.bills.reduce((sum, bill) => {
+    return sum + (bill.splitWithRachel ? Number(bill.amount || 0) / 2 : 0);
+  }, 0);
+  const yourBills = totalBills - rachelTotal;
+  const cardPayments = state.cards.reduce((sum, card) => sum + Number(card.payment || 0), 0);
+  const monthlyIncome = Number(state.budget?.monthlyIncome || 0);
+  const possibleExtra = monthlyIncome ? monthlyIncome - yourBills - cardPayments : 0;
+
+  return {
+    totalBills,
+    rachelTotal,
+    yourBills,
+    cardPayments,
+    monthlyIncome,
+    possibleExtra,
+  };
+}
+
+function renderBills() {
+  const totals = getBillTotals();
+  els.totalBills.textContent = money(totals.totalBills);
+  els.rachelTotal.textContent = money(totals.rachelTotal);
+  els.possibleExtra.textContent = money(Math.max(totals.possibleExtra, 0));
+  if (!totals.monthlyIncome) {
+    els.possibleExtraNote.textContent = "Add income to calculate";
+  } else if (totals.possibleExtra < 0) {
+    els.possibleExtraNote.textContent = `Short by ${money(Math.abs(totals.possibleExtra))} after bills/cards`;
+  } else {
+    els.possibleExtraNote.textContent = `${money(totals.yourBills)} your bills + ${money(totals.cardPayments)} cards`;
+  }
+
+  if (!state.bills.length) {
+    els.billsTable.innerHTML = `<tr><td class="empty-state" colspan="6">Add your regular monthly bills here.</td></tr>`;
+    return;
+  }
+
+  els.billsTable.innerHTML = state.bills
+    .map((bill) => {
+      const amount = Number(bill.amount || 0);
+      const rachelShare = bill.splitWithRachel ? amount / 2 : 0;
+      const yourShare = amount - rachelShare;
+      return `
+        <tr>
+          <td><strong>${escapeHtml(bill.name)}</strong></td>
+          <td>${money(amount)}</td>
+          <td>
+            <label class="table-check">
+              <input type="checkbox" data-bill-split="${bill.id}" ${bill.splitWithRachel ? "checked" : ""}>
+              <span>Halves</span>
+            </label>
+          </td>
+          <td>${money(rachelShare)}</td>
+          <td>${money(yourShare)}</td>
+          <td>
+            <div class="card-actions">
+              <button class="mini-button" data-bill-edit="${bill.id}" type="button" title="Edit ${escapeHtml(bill.name)}" aria-label="Edit ${escapeHtml(bill.name)}"><i data-lucide="pencil"></i></button>
+              <button class="mini-button danger" data-bill-delete="${bill.id}" type="button" title="Delete ${escapeHtml(bill.name)}" aria-label="Delete ${escapeHtml(bill.name)}"><i data-lucide="trash-2"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
 }
 
 function renderSummary() {
@@ -614,6 +703,48 @@ function saveCard(event) {
   render();
 }
 
+function saveBill(event) {
+  event.preventDefault();
+  const bill = {
+    id: els.billId.value || makeId(),
+    name: els.billName.value.trim(),
+    amount: Number(els.billAmount.value),
+    splitWithRachel: els.billSplit.checked,
+  };
+
+  if (!bill.name || Number.isNaN(bill.amount)) return;
+
+  const existingIndex = state.bills.findIndex((item) => item.id === bill.id);
+  if (existingIndex >= 0) {
+    state.bills[existingIndex] = bill;
+  } else {
+    state.bills.push(bill);
+  }
+
+  resetBillForm();
+  render();
+}
+
+function resetBillForm() {
+  els.billId.value = "";
+  els.billName.value = "";
+  els.billAmount.value = "";
+  els.billSplit.checked = false;
+  els.saveBillButton.querySelector("span").textContent = "Add bill";
+}
+
+function editBill(id) {
+  const bill = state.bills.find((item) => item.id === id);
+  if (!bill) return;
+
+  els.billId.value = bill.id;
+  els.billName.value = bill.name;
+  els.billAmount.value = bill.amount;
+  els.billSplit.checked = Boolean(bill.splitWithRachel);
+  els.saveBillButton.querySelector("span").textContent = "Save bill";
+  els.billName.focus();
+}
+
 function exportData() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -653,6 +784,7 @@ document.addEventListener("DOMContentLoaded", () => {
   els.closeModalButton.addEventListener("click", () => els.cardModal.close());
   els.cancelModalButton.addEventListener("click", () => els.cardModal.close());
   els.cardForm.addEventListener("submit", saveCard);
+  els.billForm.addEventListener("submit", saveBill);
   els.exportButton.addEventListener("click", exportData);
   els.importButton.addEventListener("click", () => els.importFile.click());
   els.importFile.addEventListener("change", (event) => {
@@ -677,6 +809,11 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       render();
     });
+  });
+
+  els.monthlyIncomeInput.addEventListener("input", () => {
+    state.budget.monthlyIncome = Number(els.monthlyIncomeInput.value || 0);
+    render();
   });
 
   els.resetScenarioButton.addEventListener("click", () => {
@@ -709,6 +846,29 @@ document.addEventListener("DOMContentLoaded", () => {
       state.cards = state.cards.filter((item) => item.id !== deleteButton.dataset.delete);
       render();
     }
+  });
+
+  els.billsTable.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-bill-edit]");
+    const deleteButton = event.target.closest("[data-bill-delete]");
+
+    if (editButton) editBill(editButton.dataset.billEdit);
+
+    if (deleteButton) {
+      state.bills = state.bills.filter((item) => item.id !== deleteButton.dataset.billDelete);
+      render();
+    }
+  });
+
+  els.billsTable.addEventListener("change", (event) => {
+    const splitInput = event.target.closest("[data-bill-split]");
+    if (!splitInput) return;
+
+    const bill = state.bills.find((item) => item.id === splitInput.dataset.billSplit);
+    if (!bill) return;
+
+    bill.splitWithRachel = splitInput.checked;
+    render();
   });
 
   initStorage().finally(() => {

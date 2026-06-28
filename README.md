@@ -8,6 +8,8 @@ A browser-based credit card balance and payoff planner.
 - See total balance, utilisation, monthly payments, payoff date and interest forecast.
 - Compare avalanche and snowball payoff strategies.
 - Use the what-if planner for extra monthly payments and one-off payments.
+- Track monthly bills and tick shared bills that Rachel goes halves on.
+- See Rachel's monthly total, your bill share and possible extra money for card payments.
 - View a payoff chart and the next 12 months of projected balances.
 - Export and import your tracker data as JSON.
 - Data syncs to Supabase and also keeps a local browser backup with `localStorage`.

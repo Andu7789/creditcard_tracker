@@ -352,10 +352,55 @@ button svg,
   align-items: end;
 }
 
+.bill-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.bill-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 0.8fr) auto auto;
+  gap: 14px;
+  align-items: end;
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
 .field {
   display: grid;
   gap: 7px;
   min-width: 0;
+}
+
+.check-field,
+.table-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.check-field {
+  min-height: 44px;
+}
+
+.check-field input,
+.table-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+}
+
+.table-check span {
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .field input,
@@ -593,6 +638,8 @@ td small {
   .summary-grid,
   .workspace-grid,
   .scenario-grid,
+  .bill-summary-grid,
+  .bill-form,
   .schedule-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -624,6 +671,8 @@ td small {
   .summary-grid,
   .workspace-grid,
   .scenario-grid,
+  .bill-summary-grid,
+  .bill-form,
   .schedule-grid,
   .modal-grid {
     grid-template-columns: 1fr;
