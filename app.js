@@ -3,10 +3,9 @@ const SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4m_fZwCfwVTBD5eAJhl1LQ_D63Pe2U_";
 const SUPABASE_TABLE = "credit_card_tracker_state";
 const SUPABASE_ROW_ID = "default";
-const SUPABASE_OAUTH_REDIRECT = "https://andu7789.github.io/creditcard_tracker/";
+const ACCESS_CODE = "andrew";
 const currency = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 const money = (value) => currency.format(Number.isFinite(value) ? value : 0);
-const ALLOWED_EMAIL = "andrew.britain@gmail.com";
 
 const defaultCards = [
   {
@@ -854,62 +853,52 @@ function setDebugStatus(message) {
   if (debug) debug.textContent = `Debug: ${message}`;
 }
 
-async function handleSupabaseOAuthCallback() {
-  if (!window.location.hash) return;
-  const hash = window.location.hash.toLowerCase();
-  if (!hash.includes("access_token") && !hash.includes("id_token") && !hash.includes("error")) return;
+function showLoginOverlay() {
+  const overlay = document.getElementById("loginOverlay");
+  if (overlay) overlay.classList.remove("hidden");
+}
 
-  if (supabaseClient?.auth?.getSessionFromUrl) {
-    await supabaseClient.auth.getSessionFromUrl({ storeSession: true });
-    history.replaceState(null, "", window.location.pathname + window.location.search);
+function hideLoginOverlay() {
+  const overlay = document.getElementById("loginOverlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function setLoginError(message) {
+  const error = document.getElementById("loginError");
+  if (error) error.textContent = message;
+}
+
+function attemptLogin() {
+  const input = document.getElementById("loginInput");
+  if (!input) return;
+  const value = String(input.value || "").trim();
+  if (value === ACCESS_CODE) {
+    hideLoginOverlay();
+    setDebugStatus("Access granted. Initialising app...");
+    initStorage().finally(() => {
+      render();
+    });
+    return;
   }
+
+  setLoginError("Access code incorrect. Try again.");
+  input.focus();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  setDebugStatus("DOM loaded, checking Supabase...");
-  if (!window.supabase) {
-    setDebugStatus("Supabase library missing");
-    alert("Supabase auth library failed to load. Check network/deploy settings.");
-    return;
+  setDebugStatus("DOM loaded, waiting for access code...");
+
+  const loginButton = document.getElementById("loginButton");
+  const loginInput = document.getElementById("loginInput");
+
+  if (loginButton) loginButton.addEventListener("click", attemptLogin);
+  if (loginInput) {
+    loginInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") attemptLogin();
+    });
   }
-  setDebugStatus("Supabase library loaded");
-  // Create supabase client early so we can require authentication before
-  // initialising storage. This mirrors the client creation in initStorage.
-  if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  await handleSupabaseOAuthCallback();
-
-  // Require Google sign-in via Supabase. If the user is not signed in we'll
-  // redirect to the Google OAuth flow. If signed in but with the wrong
-  // account, sign them out and block access.
-  if (supabaseClient) {
-    try {
-      const urlHash = window.location.hash;
-      if (urlHash && (urlHash.includes("access_token") || urlHash.includes("id_token") || urlHash.includes("refresh_token") || urlHash.includes("error"))) {
-        await supabaseClient.auth.onAuthStateChange(() => {});
-      }
-
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const user = sessionData?.session?.user;
-      if (!user) {
-        await supabaseClient.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: SUPABASE_OAUTH_REDIRECT,
-          },
-        });
-        return; // redirecting to Google
-      }
-
-      if (String(user.email).toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
-        alert("Access denied: this app is restricted. Signing out.");
-        await supabaseClient.auth.signOut();
-        return;
-      }
-    } catch (err) {
-      console.warn("Auth check failed", err);
-    }
-  }
+  showLoginOverlay();
   els.addCardButton.addEventListener("click", () => openCardModal());
   els.closeModalButton.addEventListener("click", () => els.cardModal.close());
   els.cancelModalButton.addEventListener("click", () => els.cardModal.close());
@@ -1027,7 +1016,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     render();
   });
 
-  initStorage().finally(() => {
-    render();
-  });
 });

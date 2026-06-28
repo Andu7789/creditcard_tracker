@@ -10,13 +10,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <script src="app.js?v=5757e7b" defer></script>
 </head>
 <body>
   <div id="debugStatus" style="position:fixed;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.8);color:#fff;font-size:12px;z-index:9999;font-family:system-ui, sans-serif;">
     Debug: app not loaded yet
+  </div>
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <h2>Enter access code</h2>
+      <input id="loginInput" type="password" placeholder="Access code" aria-label="Access code" />
+      <button id="loginButton" class="primary-button" type="button">Unlock</button>
+      <p id="loginError" class="login-error" aria-live="polite"></p>
+    </div>
   </div>
   <div class="app-shell">
     <aside class="sidebar">
