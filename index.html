@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="app.js?v=5757e7b" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -195,11 +195,11 @@
           <table>
             <thead>
               <tr>
-                <th>Bill</th>
-                <th>Monthly amount</th>
-                <th>Rachel halves</th>
-                <th>Rachel pays</th>
-                <th>Your share</th>
+                <th><button class="sort-button" data-bill-sort="name" type="button">Bill <span></span></button></th>
+                <th><button class="sort-button" data-bill-sort="amount" type="button">Monthly amount <span></span></button></th>
+                <th><button class="sort-button" data-bill-sort="splitWithRachel" type="button">Rachel halves <span></span></button></th>
+                <th><button class="sort-button" data-bill-sort="rachelShare" type="button">Rachel pays <span></span></button></th>
+                <th><button class="sort-button" data-bill-sort="yourShare" type="button">Your share <span></span></button></th>
                 <th></th>
               </tr>
             </thead>
