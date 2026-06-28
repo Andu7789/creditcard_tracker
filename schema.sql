@@ -24,3 +24,37 @@ for all
 to anon, authenticated
 using (true)
 with check (true);
+
+-- Bills table for credit card tracker
+create table if not exists public.bills (
+  id uuid primary key default gen_random_uuid(),
+  card_id text,
+  amount numeric(12,2) not null,
+  currency text default 'USD',
+  due_date date,
+  cycle_start date,
+  cycle_end date,
+  paid boolean default false,
+  paid_at timestamptz,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.bills enable row level security;
+
+drop policy if exists "Allow public select bills" on public.bills;
+drop policy if exists "Allow public write bills" on public.bills;
+
+create policy "Allow public select bills"
+on public.bills
+for select
+to anon, authenticated
+using (true);
+
+create policy "Allow public write bills"
+on public.bills
+for all
+to anon, authenticated
+using (true)
+with check (true);
