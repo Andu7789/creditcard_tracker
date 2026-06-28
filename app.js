@@ -102,6 +102,7 @@ function defaultState() {
     strategy: "avalanche",
     scenario: { extraMonthly: 50, oneOff: 250, oneOffMonth: 2 },
     cardSort: { field: "balance", direction: "desc" },
+    billSort: { field: "amount", direction: "desc" },
   };
 }
 
@@ -121,6 +122,10 @@ function normaliseState(value) {
     cardSort: {
       field: value?.cardSort?.field || "balance",
       direction: value?.cardSort?.direction === "asc" ? "asc" : "desc",
+    },
+    billSort: {
+      field: value?.billSort?.field || "amount",
+      direction: value?.billSort?.direction === "asc" ? "asc" : "desc",
     },
   };
 }
@@ -159,6 +164,26 @@ async function initStorage() {
 
     if (data?.data) {
       state = normaliseState(data.data);
+      // If there are no bills in the saved JSON state, try importing from the
+      // dedicated `bills` table so seeded rows appear in the UI.
+      if ((!Array.isArray(state.bills) || state.bills.length === 0) && supabaseClient) {
+        try {
+          const { data: billsData, error: billsError } = await supabaseClient.from('bills').select('*');
+          if (!billsError && Array.isArray(billsData) && billsData.length) {
+            state.bills = billsData.map((b) => ({
+              id: b.id || makeId(),
+              name: b.notes || b.name || "",
+              amount: Number(b.amount) || 0,
+              splitWithRachel: false,
+              dueDate: b.due_date || null,
+            }));
+            // Persist merged state back to the single-state table so UI stays in sync
+            await saveToSupabase();
+          }
+        } catch (err) {
+          console.warn("Failed to import bills from bills table:", err);
+        }
+      }
     } else {
       await saveToSupabase();
     }
@@ -372,6 +397,7 @@ function getBillTotals() {
 
 function renderBills() {
   const totals = getBillTotals();
+  renderBillSortIndicators();
   els.totalBills.textContent = money(totals.totalBills);
   els.rachelTotal.textContent = money(totals.rachelTotal);
   els.possibleExtra.textContent = money(Math.max(totals.possibleExtra, 0));
@@ -388,7 +414,7 @@ function renderBills() {
     return;
   }
 
-  els.billsTable.innerHTML = state.bills
+  els.billsTable.innerHTML = getSortedBills()
     .map((bill) => {
       const amount = Number(bill.amount || 0);
       const rachelShare = bill.splitWithRachel ? amount / 2 : 0;
@@ -415,6 +441,38 @@ function renderBills() {
       `;
     })
     .join("");
+}
+
+function getSortedBills() {
+  const { field, direction } = state.billSort || { field: "amount", direction: "desc" };
+  const multiplier = direction === "asc" ? 1 : -1;
+
+  return [...state.bills].sort((a, b) => {
+    const aValue = getBillSortValue(a, field);
+    const bValue = getBillSortValue(b, field);
+
+    if (aValue < bValue) return -1 * multiplier;
+    if (aValue > bValue) return 1 * multiplier;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+}
+
+function getBillSortValue(bill, field) {
+  const amount = Number(bill.amount || 0);
+  if (field === "name") return String(bill.name || "").toLowerCase();
+  if (field === "splitWithRachel") return bill.splitWithRachel ? 1 : 0;
+  if (field === "rachelShare") return bill.splitWithRachel ? amount / 2 : 0;
+  if (field === "yourShare") return bill.splitWithRachel ? amount / 2 : amount;
+  return amount;
+}
+
+function renderBillSortIndicators() {
+  const { field, direction } = state.billSort || { field: "amount", direction: "desc" };
+  document.querySelectorAll("[data-bill-sort]").forEach((button) => {
+    const isActive = button.dataset.billSort === field;
+    button.setAttribute("aria-sort", isActive ? (direction === "asc" ? "ascending" : "descending") : "none");
+    button.querySelector("span").textContent = isActive ? (direction === "asc" ? "▲" : "▼") : "";
+  });
 }
 
 function renderSummary() {
@@ -826,6 +884,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const field = button.dataset.cardSort;
       const current = state.cardSort || { field: "balance", direction: "desc" };
       state.cardSort = {
+        field,
+        direction: current.field === field && current.direction === "desc" ? "asc" : "desc",
+      };
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-bill-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const field = button.dataset.billSort;
+      const current = state.billSort || { field: "amount", direction: "desc" };
+      state.billSort = {
         field,
         direction: current.field === field && current.direction === "desc" ? "asc" : "desc",
       };
