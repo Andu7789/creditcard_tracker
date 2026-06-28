@@ -848,11 +848,19 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function setDebugStatus(message) {
+  const debug = document.querySelector("#debugStatus");
+  if (debug) debug.textContent = `Debug: ${message}`;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  setDebugStatus("DOM loaded, checking Supabase...");
   if (!window.supabase) {
+    setDebugStatus("Supabase library missing");
     alert("Supabase auth library failed to load. Check network/deploy settings.");
     return;
   }
+  setDebugStatus("Supabase library loaded");
   // Create supabase client early so we can require authentication before
   // initialising storage. This mirrors the client creation in initStorage.
   if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
