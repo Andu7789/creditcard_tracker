@@ -5,6 +5,7 @@ const SUPABASE_TABLE = "credit_card_tracker_state";
 const SUPABASE_ROW_ID = "default";
 const currency = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 const money = (value) => currency.format(Number.isFinite(value) ? value : 0);
+const ALLOWED_EMAIL = "andrew.britain@gmail.com";
 
 const defaultCards = [
   {
@@ -153,7 +154,8 @@ async function initStorage() {
   }
 
   try {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // supabaseClient is initialised earlier in DOMContentLoaded; reuse it.
+    if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const { data, error } = await supabaseClient
       .from(SUPABASE_TABLE)
       .select("data")
@@ -846,7 +848,32 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // Create supabase client early so we can require authentication before
+  // initialising storage. This mirrors the client creation in initStorage.
+  if (window.supabase && !supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Require Google sign-in via Supabase. If the user is not signed in we'll
+  // redirect to the Google OAuth flow. If signed in but with the wrong
+  // account, sign them out and block access.
+  if (supabaseClient) {
+    try {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const user = sessionData?.session?.user;
+      if (!user) {
+        await supabaseClient.auth.signInWithOAuth({ provider: "google" });
+        return; // redirecting to Google
+      }
+
+      if (String(user.email).toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+        alert("Access denied: this app is restricted. Signing out.");
+        await supabaseClient.auth.signOut();
+        return;
+      }
+    } catch (err) {
+      console.warn("Auth check failed", err);
+    }
+  }
   els.addCardButton.addEventListener("click", () => openCardModal());
   els.closeModalButton.addEventListener("click", () => els.cardModal.close());
   els.cancelModalButton.addEventListener("click", () => els.cardModal.close());

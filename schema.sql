@@ -12,18 +12,18 @@ alter table public.credit_card_tracker_state enable row level security;
 drop policy if exists "Allow public read credit card tracker state" on public.credit_card_tracker_state;
 drop policy if exists "Allow public write credit card tracker state" on public.credit_card_tracker_state;
 
-create policy "Allow public read credit card tracker state"
+create policy "Allow authenticated read credit card tracker state"
 on public.credit_card_tracker_state
 for select
-to anon, authenticated
-using (true);
+to authenticated
+using (auth.role() = 'authenticated');
 
-create policy "Allow public write credit card tracker state"
+create policy "Allow authenticated write credit card tracker state"
 on public.credit_card_tracker_state
 for all
-to anon, authenticated
-using (true)
-with check (true);
+to authenticated
+using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
 
 -- Bills table for credit card tracker
 create table if not exists public.bills (
@@ -46,15 +46,15 @@ alter table public.bills enable row level security;
 drop policy if exists "Allow public select bills" on public.bills;
 drop policy if exists "Allow public write bills" on public.bills;
 
-create policy "Allow public select bills"
+create policy "Allow authenticated select bills"
 on public.bills
 for select
-to anon, authenticated
-using (true);
+to authenticated
+using (auth.role() = 'authenticated');
 
-create policy "Allow public write bills"
+create policy "Allow authenticated write bills"
 on public.bills
 for all
-to anon, authenticated
-using (true)
-with check (true);
+to authenticated
+using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
