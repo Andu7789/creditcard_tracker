@@ -900,6 +900,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Fallback: if the header buttons lost their `data-bill-sort` attributes
+  // (for example due to caching or deployment transformations), wire them
+  // up by matching their visible label text so sorting still works.
+  if (document.querySelectorAll("[data-bill-sort]").length === 0) {
+    document.querySelectorAll("#bills thead button.sort-button").forEach((button) => {
+      const txt = (button.textContent || "").toLowerCase();
+      if (txt.includes("monthly amount") || txt.includes("amount")) button.dataset.billSort = "amount";
+      else if (txt.includes("bill")) button.dataset.billSort = "name";
+      else if (txt.includes("rachel halves")) button.dataset.billSort = "splitWithRachel";
+      else if (txt.includes("rachel pays")) button.dataset.billSort = "rachelShare";
+      else if (txt.includes("your share")) button.dataset.billSort = "yourShare";
+    });
+  }
+
   document.querySelectorAll("[data-bill-sort]").forEach((button) => {
     button.addEventListener("click", () => {
       const field = button.dataset.billSort;
