@@ -873,7 +873,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const { data: sessionData } = await supabaseClient.auth.getSession();
       const user = sessionData?.session?.user;
       if (!user) {
-        await supabaseClient.auth.signInWithOAuth({ provider: "google" });
+        const redirectTo = window.location.origin + window.location.pathname;
+        await supabaseClient.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo,
+          },
+        });
         return; // redirecting to Google
       }
 
