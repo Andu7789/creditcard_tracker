@@ -185,17 +185,18 @@ async function initStorage() {
           const { data: billsData, error: billsError } = await supabaseClient.from('bills').select('*');
           if (!billsError && Array.isArray(billsData) && billsData.length) {
             const existingIds = new Set((state.bills || []).map((b) => String(b.id)));
-            const imported = billsData
-              .filter((b) => !existingIds.has(String(b.id)))
-              .map((b) => ({
-                id: b.id || makeId(),
-                name: b.notes || b.name || "",
-                amount: Number(b.amount) || 0,
-                splitWithRachel: false,
-                paid: false,
-              // Persist merged state back to the single-state table so UI stays in sync
-              await saveToSupabase();
-            }
+          const imported = billsData
+            .filter((b) => !existingIds.has(String(b.id)))
+            .map((b) => ({
+              id: b.id || makeId(),
+              name: b.notes || b.name || "",
+              amount: Number(b.amount) || 0,
+              splitWithRachel: false,
+              paid: false,
+            }));
+          if (imported.length) {
+            state.bills = [...(state.bills || []), ...imported];
+            await saveToSupabase();
           }
         } catch (err) {
           console.warn("Failed to import bills from bills table:", err);
