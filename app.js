@@ -178,30 +178,6 @@ async function initStorage() {
 
     if (data?.data) {
       state = normaliseState(data.data);
-      // Merge rows from the dedicated `bills` table into the JSON state
-      // without overwriting any bills the user already added manually.
-      if (supabaseClient) {
-        try {
-          const { data: billsData, error: billsError } = await supabaseClient.from('bills').select('*');
-          if (!billsError && Array.isArray(billsData) && billsData.length) {
-            const existingIds = new Set((state.bills || []).map((b) => String(b.id)));
-          const imported = billsData
-            .filter((b) => !existingIds.has(String(b.id)))
-            .map((b) => ({
-              id: b.id || makeId(),
-              name: b.notes || b.name || "",
-              amount: Number(b.amount) || 0,
-              splitWithRachel: false,
-              paid: false,
-            }));
-          if (imported.length) {
-            state.bills = [...(state.bills || []), ...imported];
-            await saveToSupabase();
-          }
-        } catch (err) {
-          console.warn("Failed to import bills from bills table:", err);
-        }
-      }
     } else {
       await saveToSupabase();
     }
