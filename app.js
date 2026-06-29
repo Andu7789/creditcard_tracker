@@ -1110,4 +1110,3 @@ if (document.readyState === 'loading') {
     }
   });
 
-});
