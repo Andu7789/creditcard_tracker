@@ -517,6 +517,53 @@ td small {
   color: var(--muted);
 }
 
+#loginOverlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 26, 22, 0.75);
+  z-index: 99999;
+}
+
+#loginOverlay.hidden {
+  display: none;
+}
+
+.login-card {
+  width: min(100%, 360px);
+  padding: 28px;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+.login-card h2 {
+  margin: 0 0 18px;
+  font-size: 1.45rem;
+}
+
+.login-card input {
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 14px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.login-card .primary-button {
+  width: 100%;
+}
+
+.login-error {
+  margin: 12px 0 0;
+  color: var(--danger);
+  min-height: 22px;
+}
+
 .card-actions {
   display: flex;
   justify-content: flex-end;
