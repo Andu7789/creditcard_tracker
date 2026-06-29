@@ -686,15 +686,21 @@ function renderInsights() {
 
 function clearPaidExceptRachel() {
   let changed = false;
+  const cleared = [];
   state.bills = state.bills.map((bill) => {
-    if (bill.paid && !bill.splitWithRachel) {
+    const split = Boolean(bill.splitWithRachel);
+    const paid = Boolean(bill.paid);
+    if (paid && !split) {
       changed = true;
-      return { ...bill, paid: false };
+      cleared.push(bill.id);
+      return { ...bill, paid: false, splitWithRachel: split, amount: Number(bill.amount || 0) };
     }
-    return bill;
+    return { ...bill, splitWithRachel: split, paid, amount: Number(bill.amount || 0) };
   });
   if (changed) {
+    queueSupabaseSave();
     render();
+    console.info("clearPaidExceptRachel: cleared ids", cleared);
   }
 }
 
