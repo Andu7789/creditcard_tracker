@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" defer></script>
-  <script src="app.js?v=5757e7b" defer></script>
+  <script src="app.js?v=aad247e" defer></script>
 </head>
 <body>
   <div id="debugStatus" style="position:fixed;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.8);color:#fff;font-size:12px;z-index:9999;font-family:system-ui, sans-serif;">
@@ -165,6 +165,13 @@
               <input id="monthlyIncomeInput" type="number" min="0" step="50" placeholder="0">
             </div>
           </label>
+          <label class="field">
+            <span>Current bank balance</span>
+            <div class="input-with-prefix">
+              <span>&pound;</span>
+              <input id="bankBalanceInput" type="number" min="0" step="10" placeholder="0">
+            </div>
+          </label>
           <div class="scenario-result">
             <span>Total bills</span>
             <strong id="totalBills">£0</strong>
@@ -174,6 +181,11 @@
             <span>Rachel monthly total</span>
             <strong id="rachelTotal">£0</strong>
             <small>Half of ticked shared bills</small>
+          </div>
+          <div class="scenario-result">
+            <span>Balance after remaining bills</span>
+            <strong id="bankRemaining">£0</strong>
+            <small id="bankRemainingNote">After paying unpaid bills</small>
           </div>
           <div class="scenario-result">
             <span>Could pay extra</span>
@@ -206,6 +218,7 @@
           <table>
             <thead>
               <tr>
+                <th>Paid</th>
                 <th><button class="sort-button" data-bill-sort="name" type="button">Bill <span></span></button></th>
                 <th><button class="sort-button" data-bill-sort="amount" type="button">Monthly amount <span></span></button></th>
                 <th><button class="sort-button" data-bill-sort="splitWithRachel" type="button">Rachel halves <span></span></button></th>
