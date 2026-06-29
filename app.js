@@ -1,5 +1,3 @@
-const STORAGE_KEY = "cardclear-data-v1";
-const AUTH_STORAGE_KEY = "cardclear-unlocked-v1";
 const SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4m_fZwCfwVTBD5eAJhl1LQ_D63Pe2U_";
 const SUPABASE_TABLE = "credit_card_tracker_state";
@@ -40,11 +38,12 @@ const defaultCards = [
 
 const defaultBills = [];
 
-let state = loadLocalState();
+let state = defaultState();
 let balanceChart;
 let supabaseClient = null;
 let supabaseReady = false;
 let saveTimer = null;
+let activeSupabaseRowId = SUPABASE_ROW_ID;
 
 const els = {
   totalBalance: document.querySelector("#totalBalance"),
@@ -144,17 +143,6 @@ function normaliseState(value) {
   };
 }
 
-function loadLocalState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return defaultState();
-
-  try {
-    return normaliseState(JSON.parse(saved));
-  } catch {
-    return defaultState();
-  }
-}
-
 function makeId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `card-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -169,13 +157,28 @@ async function initStorage() {
   try {
     // supabaseClient is initialised earlier in DOMContentLoaded; reuse it.
     if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const { data, error } = await supabaseClient
+    let { data, error } = await supabaseClient
       .from(SUPABASE_TABLE)
       .select("data")
-      .eq("id", SUPABASE_ROW_ID)
+      .eq("id", activeSupabaseRowId)
       .maybeSingle();
 
     if (error) throw error;
+
+    if (!data?.data) {
+      const fallback = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .select("id,data")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fallback.error) throw fallback.error;
+      if (fallback.data?.data) {
+        activeSupabaseRowId = fallback.data.id;
+        data = fallback.data;
+      }
+    }
 
     if (data?.data) {
       state = normaliseState(data.data);
@@ -222,7 +225,6 @@ function updateStorageStatus(message) {
 }
 
 function saveState({ remote = true } = {}) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (remote) queueSupabaseSave();
 }
 
@@ -241,7 +243,7 @@ async function saveToSupabase() {
   if (!supabaseClient) return;
   const { error } = await supabaseClient.from(SUPABASE_TABLE).upsert(
     {
-      id: SUPABASE_ROW_ID,
+      id: activeSupabaseRowId,
       data: state,
       updated_at: new Date().toISOString(),
     },
@@ -910,7 +912,6 @@ function attemptLogin() {
   if (!input) return;
   const value = String(input.value || "").trim();
   if (value === ACCESS_CODE) {
-    localStorage.setItem(AUTH_STORAGE_KEY, "true");
     hideLoginOverlay();
     hideDebugStatus();
     initStorage().finally(() => {
@@ -936,16 +937,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  const unlocked = localStorage.getItem(AUTH_STORAGE_KEY) === "true";
-  if (unlocked) {
-    hideLoginOverlay();
-    hideDebugStatus();
-    initStorage().finally(() => {
-      render();
-    });
-  } else {
-    showLoginOverlay();
-  }
+  showLoginOverlay();
   els.addCardButton.addEventListener("click", () => openCardModal());
   els.closeModalButton.addEventListener("click", () => els.cardModal.close());
   els.cancelModalButton.addEventListener("click", () => els.cardModal.close());
