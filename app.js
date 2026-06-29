@@ -140,6 +140,7 @@ function normaliseState(value) {
       field: value?.billSort?.field || "amount",
       direction: value?.billSort?.direction === "asc" ? "asc" : "desc",
     },
+    migratedBillsFromSupabase: Boolean(value?.migratedBillsFromSupabase),
   };
 }
 
@@ -178,6 +179,31 @@ async function initStorage() {
 
     if (data?.data) {
       state = normaliseState(data.data);
+
+      if (!state.migratedBillsFromSupabase) {
+        try {
+          const { data: billsData, error: billsError } = await supabaseClient.from('bills').select('*');
+          if (!billsError && Array.isArray(billsData) && billsData.length) {
+            const existingIds = new Set((state.bills || []).map((b) => String(b.id)));
+            const imported = billsData
+              .filter((b) => !existingIds.has(String(b.id)))
+              .map((b) => ({
+                id: b.id || makeId(),
+                name: b.notes || b.name || "",
+                amount: Number(b.amount) || 0,
+                splitWithRachel: false,
+                paid: false,
+              }));
+            if (imported.length) {
+              state.bills = [...(state.bills || []), ...imported];
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to import bills from bills table:", err);
+        }
+        state.migratedBillsFromSupabase = true;
+        await saveToSupabase();
+      }
     } else {
       await saveToSupabase();
     }
