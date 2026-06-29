@@ -12,7 +12,16 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" defer></script>
-  <script src="app.js?v=aad247e" defer></script>
+  <script>
+    // Cache-busting loader: request latest app.js each load (short-lived cache-bust)
+    (function () {
+      const s = document.createElement('script');
+      s.defer = true;
+      // ISO timestamp without punctuation keeps it compact
+      s.src = 'app.js?v=' + new Date().toISOString().replace(/[^0-9]/g, '');
+      document.head.appendChild(s);
+    })();
+  </script>
 </head>
 <body>
   <div id="debugStatus" style="position:fixed;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.8);color:#fff;font-size:12px;z-index:9999;font-family:system-ui, sans-serif;">

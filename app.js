@@ -451,6 +451,18 @@ function renderBills() {
     return;
   }
 
+  // Insert clear-paid button above the bills table if not present
+  const billsPanel = document.querySelector('#bills');
+  if (billsPanel && !document.getElementById('clearPaidButton')) {
+    const btnWrap = document.createElement('div');
+    btnWrap.style.margin = '12px 0';
+    btnWrap.innerHTML = `<button id="clearPaidButton" class="ghost-button" type="button">Clear paid (except Rachel)</button>`;
+    billsPanel.querySelector('.panel-header').appendChild(btnWrap);
+    document.getElementById('clearPaidButton').addEventListener('click', () => {
+      clearPaidExceptRachel();
+    });
+  }
+
   els.billsTable.innerHTML = getSortedBills()
     .map((bill) => {
       const amount = Number(bill.amount || 0);
@@ -670,6 +682,20 @@ function renderInsights() {
   els.insightList.innerHTML = insights
     .map((insight) => `<div class="insight"><strong>${insight.title}</strong><span>${insight.body}</span></div>`)
     .join("");
+}
+
+function clearPaidExceptRachel() {
+  let changed = false;
+  state.bills = state.bills.map((bill) => {
+    if (bill.paid && !bill.splitWithRachel) {
+      changed = true;
+      return { ...bill, paid: false };
+    }
+    return bill;
+  });
+  if (changed) {
+    render();
+  }
 }
 
 function renderSchedule() {
