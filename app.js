@@ -952,7 +952,7 @@ function attemptLogin() {
   input.focus();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+async function initApp() {
   setDebugStatus("DOM loaded, loading Supabase state...");
 
   const loginButton = document.getElementById("loginButton");
@@ -989,6 +989,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       render();
     });
   });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  // If the script was loaded after DOMContentLoaded (dynamic loader), run immediately
+  initApp();
+}
 
   [els.extraMonthlyInput, els.oneOffInput, els.oneOffMonthInput].forEach((input) => {
     input.addEventListener("input", () => {
