@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4m_fZwCfwVTBD5eAJhl1LQ_D63Pe2U_";
 const SUPABASE_TABLE = "credit_card_tracker_state";
 const SUPABASE_ROW_ID = "default";
+const ACCESS_EMAIL = "andrew.britain@gmail.com";
 const ACCESS_CODE = "andrew";
 const currency = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
 const money = (value) => currency.format(Number.isFinite(value) ? value : 0);
@@ -182,6 +183,7 @@ async function initStorage() {
 
     if (data?.data) {
       state = normaliseState(data.data);
+      updateStorageStatus(`Loaded Supabase row ${activeSupabaseRowId}: ${state.cards.length} cards, ${state.bills.length} bills`);
 
       if (!state.migratedBillsFromSupabase) {
         try {
@@ -925,7 +927,7 @@ function attemptLogin() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  setDebugStatus("DOM loaded, waiting for access code...");
+  setDebugStatus("DOM loaded, loading Supabase state...");
 
   const loginButton = document.getElementById("loginButton");
   const loginInput = document.getElementById("loginInput");
@@ -938,6 +940,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   showLoginOverlay();
+  await initStorage();
+  render();
+  setDebugStatus("Ready. Enter access code to unlock.");
+
   els.addCardButton.addEventListener("click", () => openCardModal());
   els.closeModalButton.addEventListener("click", () => els.cardModal.close());
   els.cancelModalButton.addEventListener("click", () => els.cardModal.close());
