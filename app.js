@@ -1,4 +1,5 @@
 const STORAGE_KEY = "cardclear-data-v1";
+const AUTH_STORAGE_KEY = "cardclear-unlocked-v1";
 const SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4m_fZwCfwVTBD5eAJhl1LQ_D63Pe2U_";
 const SUPABASE_TABLE = "credit_card_tracker_state";
@@ -70,8 +71,11 @@ const els = {
   cardMinimum: document.querySelector("#cardMinimum"),
   cardPayment: document.querySelector("#cardPayment"),
   monthlyIncomeInput: document.querySelector("#monthlyIncomeInput"),
+  bankBalanceInput: document.querySelector("#bankBalanceInput"),
   totalBills: document.querySelector("#totalBills"),
   rachelTotal: document.querySelector("#rachelTotal"),
+  bankRemaining: document.querySelector("#bankRemaining"),
+  bankRemainingNote: document.querySelector("#bankRemainingNote"),
   possibleExtra: document.querySelector("#possibleExtra"),
   possibleExtraNote: document.querySelector("#possibleExtraNote"),
   billForm: document.querySelector("#billForm"),
@@ -99,7 +103,7 @@ function defaultState() {
   return {
     cards: defaultCards,
     bills: defaultBills,
-    budget: { monthlyIncome: 0 },
+    budget: { monthlyIncome: 0, bankBalance: 0 },
     strategy: "avalanche",
     scenario: { extraMonthly: 50, oneOff: 250, oneOffMonth: 2 },
     cardSort: { field: "balance", direction: "desc" },
@@ -110,9 +114,17 @@ function defaultState() {
 function normaliseState(value) {
   return {
     cards: Array.isArray(value?.cards) ? value.cards : defaultCards,
-    bills: Array.isArray(value?.bills) ? value.bills : defaultBills,
+    bills: Array.isArray(value?.bills)
+      ? value.bills.map((bill) => ({
+          ...bill,
+          amount: Number(bill.amount || 0),
+          splitWithRachel: Boolean(bill.splitWithRachel),
+          paid: Boolean(bill.paid),
+        }))
+      : defaultBills,
     budget: {
       monthlyIncome: Number(value?.budget?.monthlyIncome ?? 0),
+      bankBalance: Number(value?.budget?.bankBalance ?? 0),
     },
     strategy: value?.strategy || "avalanche",
     scenario: {
@@ -180,11 +192,7 @@ async function initStorage() {
                 name: b.notes || b.name || "",
                 amount: Number(b.amount) || 0,
                 splitWithRachel: false,
-                dueDate: b.due_date || null,
-              }));
-
-            if (imported.length) {
-              state.bills = Array.isArray(state.bills) ? state.bills.concat(imported) : imported;
+                paid: false,
               // Persist merged state back to the single-state table so UI stays in sync
               await saveToSupabase();
             }
@@ -376,6 +384,7 @@ function syncControls() {
   els.extraMonthlyInput.value = state.scenario.extraMonthly;
   els.oneOffInput.value = state.scenario.oneOff;
   els.monthlyIncomeInput.value = state.budget?.monthlyIncome || "";
+  if (els.bankBalanceInput) els.bankBalanceInput.value = state.budget?.bankBalance || "";
 
   const current = Number(state.scenario.oneOffMonth || 1);
   els.oneOffMonthInput.innerHTML = Array.from({ length: 24 }, (_, index) => {
@@ -396,6 +405,14 @@ function getBillTotals() {
   const monthlyIncome = Number(state.budget?.monthlyIncome || 0) + rachelTotal;
   const possibleExtra = monthlyIncome ? monthlyIncome - yourBills - cardPayments : 0;
 
+  const unpaidYourBills = state.bills.reduce((sum, bill) => {
+    if (bill.paid) return sum;
+    const amount = Number(bill.amount || 0);
+    return sum + (bill.splitWithRachel ? amount / 2 : amount);
+  }, 0);
+
+  const bankRemaining = Number(state.budget?.bankBalance || 0) - unpaidYourBills;
+
   return {
     totalBills,
     rachelTotal,
@@ -403,6 +420,7 @@ function getBillTotals() {
     cardPayments,
     monthlyIncome,
     possibleExtra,
+    bankRemaining,
   };
 }
 
@@ -411,6 +429,7 @@ function renderBills() {
   renderBillSortIndicators();
   els.totalBills.textContent = money(totals.totalBills);
   els.rachelTotal.textContent = money(totals.rachelTotal);
+  els.bankRemaining.textContent = money(totals.bankRemaining);
   els.possibleExtra.textContent = money(Math.max(totals.possibleExtra, 0));
   if (!totals.monthlyIncome) {
     els.possibleExtraNote.textContent = "Add income to calculate";
@@ -421,7 +440,7 @@ function renderBills() {
   }
 
   if (!state.bills.length) {
-    els.billsTable.innerHTML = `<tr><td class="empty-state" colspan="6">Add your regular monthly bills here.</td></tr>`;
+    els.billsTable.innerHTML = `<tr><td class="empty-state" colspan="7">Add your regular monthly bills here.</td></tr>`;
     return;
   }
 
@@ -432,6 +451,12 @@ function renderBills() {
       const yourShare = amount - rachelShare;
       return `
         <tr>
+          <td>
+            <label class="table-check">
+              <input type="checkbox" data-bill-paid="${bill.id}" ${bill.paid ? "checked" : ""}>
+              <span>Paid</span>
+            </label>
+          </td>
           <td><strong>${escapeHtml(bill.name)}</strong></td>
           <td>${money(amount)}</td>
           <td>
@@ -774,19 +799,20 @@ function saveCard(event) {
 
 function saveBill(event) {
   event.preventDefault();
-  const bill = {
-    id: els.billId.value || makeId(),
-    name: els.billName.value.trim(),
-    amount: Number(els.billAmount.value),
-    splitWithRachel: els.billSplit.checked,
+const existingBill = state.bills.find((item) => item.id === els.billId.value);
+    const bill = {
+      id: els.billId.value || makeId(),
+      name: els.billName.value.trim(),
+      amount: Number(els.billAmount.value),
+      splitWithRachel: els.billSplit.checked,
+      paid: existingBill ? Boolean(existingBill.paid) : false,
   };
 
   if (!bill.name || Number.isNaN(bill.amount)) return;
 
   const existingIndex = state.bills.findIndex((item) => item.id === bill.id);
   if (existingIndex >= 0) {
-    state.bills[existingIndex] = bill;
-  } else {
+      bill.paid = Boolean(state.bills[existingIndex].paid);
     state.bills.push(bill);
   }
 
@@ -881,6 +907,7 @@ function attemptLogin() {
   if (!input) return;
   const value = String(input.value || "").trim();
   if (value === ACCESS_CODE) {
+    localStorage.setItem(AUTH_STORAGE_KEY, "true");
     hideLoginOverlay();
     hideDebugStatus();
     initStorage().finally(() => {
@@ -906,7 +933,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  showLoginOverlay();
+  const unlocked = localStorage.getItem(AUTH_STORAGE_KEY) === "true";
+  if (unlocked) {
+    hideLoginOverlay();
+    hideDebugStatus();
+    initStorage().finally(() => {
+      render();
+    });
+  } else {
+    showLoginOverlay();
+  }
   els.addCardButton.addEventListener("click", () => openCardModal());
   els.closeModalButton.addEventListener("click", () => els.cardModal.close());
   els.cancelModalButton.addEventListener("click", () => els.cardModal.close());
@@ -942,6 +978,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     state.budget.monthlyIncome = Number(els.monthlyIncomeInput.value || 0);
     render();
   });
+
+  if (els.bankBalanceInput) {
+    els.bankBalanceInput.addEventListener("input", () => {
+      state.budget.bankBalance = Number(els.bankBalanceInput.value || 0);
+      render();
+    });
+  }
 
   els.resetScenarioButton.addEventListener("click", () => {
     state.scenario = { extraMonthly: 0, oneOff: 0, oneOffMonth: 1 };
@@ -1015,13 +1058,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   els.billsTable.addEventListener("change", (event) => {
     const splitInput = event.target.closest("[data-bill-split]");
-    if (!splitInput) return;
+    if (splitInput) {
+      const bill = state.bills.find((item) => item.id === splitInput.dataset.billSplit);
+      if (!bill) return;
+      bill.splitWithRachel = splitInput.checked;
+      render();
+      return;
+    }
 
-    const bill = state.bills.find((item) => item.id === splitInput.dataset.billSplit);
-    if (!bill) return;
-
-    bill.splitWithRachel = splitInput.checked;
-    render();
+    const paidInput = event.target.closest("[data-bill-paid]");
+    if (paidInput) {
+      const bill = state.bills.find((item) => item.id === paidInput.dataset.billPaid);
+      if (!bill) return;
+      bill.paid = paidInput.checked;
+      render();
+    }
   });
 
 });
